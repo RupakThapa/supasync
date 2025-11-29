@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getSupabaseAccounts, type SupabaseAccount } from './config/supabaseAccounts';
-import { pingAccount, type PingStatus } from './services/keepAlive';
+import { pingAccount } from './services/keepAlive';
 import './App.css';
 
 type AccountStatus = 'idle' | 'running' | 'success' | 'error';
