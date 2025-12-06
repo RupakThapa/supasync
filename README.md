@@ -152,7 +152,70 @@ This is the simplest way to run daily pings automatically.
 
 **Note:** Vercel Cron requires your project to be deployed. Free tier includes cron jobs, but with some limitations. For production use, consider upgrading to Pro plan.
 
-### Option 3: External Cron Service
+### Option 3: n8n Webhook (Recommended for n8n Users) 🔗
+
+**Use the dedicated API endpoint for automation tools like n8n!**
+
+1. **Deploy to Vercel** (see Option 2 above)
+
+2. **Add Environment Variables in Vercel:**
+   - Add all your `VITE_SUPABASE_*` credentials (see Option 2)
+   - (Optional) Add `API_SECRET_KEY` for authentication:
+     ```
+     API_SECRET_KEY=your-secret-key-here
+     ```
+
+3. **Set up n8n Workflow:**
+   - **Quick Start:** Import the example workflow from `n8n-workflow-example.json`
+   - Or create manually:
+     - Add an **HTTP Request** node
+     - Method: `GET` or `POST`
+     - URL: `https://your-app.vercel.app/api/sync`
+     - If you set `API_SECRET_KEY`, add Authentication:
+       - Type: `Header Auth`
+       - Name: `Authorization`
+       - Value: `Bearer your-secret-key-here`
+
+4. **Test the endpoint:**
+   ```bash
+   # Without authentication
+   curl https://your-app.vercel.app/api/sync
+   
+   # With authentication
+   curl -H "Authorization: Bearer your-secret-key-here" \
+        https://your-app.vercel.app/api/sync
+   ```
+
+5. **Response format:**
+   ```json
+   {
+     "success": true,
+     "message": "Sync executed",
+     "timestamp": "2025-12-06T19:00:00.000Z",
+     "summary": {
+       "total": 5,
+       "succeeded": 5,
+       "failed": 0
+     },
+     "results": [
+       {
+         "success": true,
+         "accountId": 1,
+         "accountName": "My Project",
+         "message": "2 inserts, 1 delete completed - 1 record remains"
+       }
+     ]
+   }
+   ```
+
+**Benefits:**
+- ✅ Dedicated endpoint for external automation
+- ✅ CORS enabled for web requests
+- ✅ Optional API key authentication
+- ✅ Detailed response with per-account results
+- ✅ Works with n8n, Zapier, Make.com, or any HTTP client
+
+### Option 4: External Cron Service
 
 1. Deploy to Vercel/Netlify/Railway
 2. Set up a cron service (cron-job.org, EasyCron, etc.) to visit:
@@ -161,7 +224,7 @@ This is the simplest way to run daily pings automatically.
    ```
    The app will automatically run when `?run=true` is in the URL.
 
-### Option 4: GitHub Actions
+### Option 5: GitHub Actions
 
 Create `.github/workflows/keepalive.yml`:
 

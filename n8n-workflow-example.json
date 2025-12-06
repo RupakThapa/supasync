@@ -1,0 +1,139 @@
+{
+    "name": "Supabase Keep-Alive Sync",
+    "nodes": [
+        {
+            "parameters": {},
+            "name": "Schedule Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ],
+            "id": "schedule-trigger",
+            "webhookId": "",
+            "credentials": {},
+            "notes": "Triggers daily at 8:00 AM"
+        },
+        {
+            "parameters": {
+                "url": "https://your-app.vercel.app/api/sync",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "Bearer your-secret-key-here"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "HTTP Request - Sync Supabase",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                450,
+                300
+            ],
+            "id": "http-request",
+            "credentials": {},
+            "notes": "Calls the /api/sync endpoint"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.success }}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "name": "Check Success",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ],
+            "id": "if-node"
+        },
+        {
+            "parameters": {
+                "message": "✅ Supabase sync completed successfully!\n\nTotal: {{ $json.summary.total }}\nSucceeded: {{ $json.summary.succeeded }}\nFailed: {{ $json.summary.failed }}\n\nTimestamp: {{ $json.timestamp }}"
+            },
+            "name": "Success Notification",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                850,
+                200
+            ],
+            "id": "success-notification",
+            "notes": "Replace with Slack/Discord/Email node"
+        },
+        {
+            "parameters": {
+                "message": "❌ Supabase sync failed!\n\nError: {{ $json.error || 'Unknown error' }}"
+            },
+            "name": "Error Notification",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                850,
+                400
+            ],
+            "id": "error-notification",
+            "notes": "Replace with Slack/Discord/Email node"
+        }
+    ],
+    "connections": {
+        "Schedule Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP Request - Sync Supabase",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP Request - Sync Supabase": {
+            "main": [
+                [
+                    {
+                        "node": "Check Success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Success": {
+            "main": [
+                [
+                    {
+                        "node": "Success Notification",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Error Notification",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}
