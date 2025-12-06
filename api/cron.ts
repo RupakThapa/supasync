@@ -1,24 +1,14 @@
-#!/usr/bin/env node
-
-/**
- * Cron script to ping all Supabase accounts
- * This can be run daily via cron job
- */
-
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { config } from 'dotenv';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Load environment variables
-const envPath = join(__dirname, '..', '.env');
-config({ path: envPath });
 
 const TEST_TABLE_NAME = '_keepalive_ping';
+
+interface SupabaseAccount {
+  id: number;
+  name: string;
+  url: string;
+  key: string;
+}
 
 // Create substantial test data for activity
 const createTestData = () => ({
@@ -26,15 +16,15 @@ const createTestData = () => ({
   timestamp: new Date().toISOString(),
   ping_type: 'keepalive',
   metadata: JSON.stringify({
-    source: 'supabase-keepalive-cron',
+    source: 'supabase-keepalive-vercel',
     version: '1.0.0',
     randomData: Array.from({ length: 50 }, () => Math.random().toString(36).substring(2)),
     timestamp: Date.now(),
   }),
 });
 
-function getSupabaseAccounts() {
-  const accounts = [];
+function getSupabaseAccounts(): SupabaseAccount[] {
+  const accounts: SupabaseAccount[] = [];
   
   for (let i = 1; i <= 20; i++) {
     const name = process.env[`VITE_SUPABASE_${i}_NAME`];
@@ -54,14 +44,14 @@ function getSupabaseAccounts() {
   return accounts;
 }
 
-async function pingAccount(account) {
+async function pingAccount(account: SupabaseAccount) {
   const client = createClient(account.url, account.key, {
     auth: { persistSession: false },
   });
 
   const testData1 = createTestData();
   const testData2 = createTestData();
-  let insertedIds = [];
+  let insertedIds: string[] = [];
 
   try {
     // INSERT 2 records
@@ -124,44 +114,52 @@ async function pingAccount(account) {
   }
 }
 
-async function main() {
+export default async function handler(
+  request: VercelRequest,
+  response: VercelResponse,
+) {
+  // Verify it's a cron job request (Vercel sends Authorization header automatically)
+  // You can set CRON_SECRET in Vercel environment variables for extra security
+  const authHeader = request.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
+  
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return response.status(401).json({ error: 'Unauthorized' });
+  }
+
   const accounts = getSupabaseAccounts();
   
   if (accounts.length === 0) {
-    console.error('❌ No Supabase accounts configured in .env file');
-    process.exit(1);
+    return response.status(500).json({ 
+      error: 'No Supabase accounts configured',
+      message: 'Please add VITE_SUPABASE_* environment variables in Vercel'
+    });
   }
 
-  console.log(`🚀 Starting keep-alive ping for ${accounts.length} account(s)...\n`);
-  
   const results = [];
   let successCount = 0;
   let errorCount = 0;
 
   for (const account of accounts) {
-    console.log(`⏳ Pinging ${account.name}...`);
     const result = await pingAccount(account);
     results.push(result);
     
     if (result.success) {
       successCount++;
-      console.log(`✅ ${account.name}: ${result.message}`);
     } else {
       errorCount++;
-      console.log(`❌ ${account.name}: ${result.message}`);
     }
   }
 
-  console.log(`\n📊 Summary: ${successCount} succeeded, ${errorCount} failed out of ${accounts.length} total`);
-  
-  // Exit with error code if any failed
-  if (errorCount > 0) {
-    process.exit(1);
-  }
+  return response.status(200).json({
+    success: true,
+    timestamp: new Date().toISOString(),
+    summary: {
+      total: accounts.length,
+      succeeded: successCount,
+      failed: errorCount,
+    },
+    results,
+  });
 }
-
-main().catch(error => {
-  console.error('💥 Fatal error:', error);
-  process.exit(1);
-});
 

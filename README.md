@@ -96,7 +96,63 @@ This is the simplest way to run daily pings automatically.
    tail -f /tmp/supabase-keepalive.log
    ```
 
-### Option 2: Deploy & Use URL Parameter
+### Option 2: Vercel Cron (Recommended for Vercel Deployments) ⭐
+
+**Automatic daily cron job built-in!**
+
+1. **Deploy to Vercel:**
+   ```bash
+   # Install Vercel CLI if needed
+   npm i -g vercel
+   
+   # Deploy
+   vercel
+   ```
+
+2. **Add Environment Variables in Vercel Dashboard:**
+   - Go to your project settings → Environment Variables
+   - Add all your Supabase credentials:
+     ```
+     VITE_SUPABASE_1_NAME=breifly unko
+     VITE_SUPABASE_1_URL=https://xxx.supabase.co
+     VITE_SUPABASE_1_KEY=your-key
+     VITE_SUPABASE_2_NAME=...
+     VITE_SUPABASE_2_URL=...
+     VITE_SUPABASE_2_KEY=...
+     # ... add all 5 accounts
+     ```
+   - (Optional) Add `CRON_SECRET` for extra security
+
+3. **Redeploy after adding environment variables:**
+   ```bash
+   vercel --prod
+   ```
+
+4. **Verify Cron Job:**
+   - Go to Vercel Dashboard → Your Project → Settings → Cron Jobs
+   - You should see a cron job scheduled for `0 8 * * *` (8 AM daily)
+   - You can manually trigger it from the dashboard to test
+
+5. **Test the API endpoint manually:**
+   ```bash
+   # Test locally (if you have Vercel CLI)
+   vercel dev
+   # Then visit: http://localhost:3000/api/cron
+   
+   # Or test on production
+   curl https://your-app.vercel.app/api/cron
+   ```
+
+6. **Check Logs:**
+   - Go to Vercel Dashboard → Your Project → Functions → `/api/cron`
+   - View execution logs to see if it's running successfully
+   - Check the "Cron Jobs" tab to see execution history
+
+**The cron job will automatically run daily at 8:00 AM UTC!**
+
+**Note:** Vercel Cron requires your project to be deployed. Free tier includes cron jobs, but with some limitations. For production use, consider upgrading to Pro plan.
+
+### Option 3: External Cron Service
 
 1. Deploy to Vercel/Netlify/Railway
 2. Set up a cron service (cron-job.org, EasyCron, etc.) to visit:
@@ -105,7 +161,7 @@ This is the simplest way to run daily pings automatically.
    ```
    The app will automatically run when `?run=true` is in the URL.
 
-### Option 3: GitHub Actions
+### Option 4: GitHub Actions
 
 Create `.github/workflows/keepalive.yml`:
 

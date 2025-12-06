@@ -30,10 +30,12 @@ function App() {
       setLastRun(new Date(savedLastRun));
     }
 
-    // Check if auto-run is requested via URL
+    // Auto-run on every page load
+    setShouldAutoRun(true);
+    
+    // Clean up URL parameter if present
     const params = new URLSearchParams(window.location.search);
     if (params.get('run') === 'true') {
-      setShouldAutoRun(true);
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
