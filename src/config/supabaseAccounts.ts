@@ -6,25 +6,38 @@ export interface SupabaseAccount {
 }
 
 export function getSupabaseAccounts(): SupabaseAccount[] {
+  const accountsMap = new Map<number, Partial<SupabaseAccount>>();
+
+  // Safely iterate over all environment variables.
+  // This allows infinite scalability for any number of accounts.
+  Object.keys(import.meta.env).forEach((key) => {
+    const match = key.match(/^VITE_SUPABASE_(\d+)_(NAME|URL|KEY)$/);
+    if (match) {
+      const id = parseInt(match[1], 10);
+      const field = match[2].toLowerCase() as 'name' | 'url' | 'key';
+      
+      if (!accountsMap.has(id)) {
+        accountsMap.set(id, { id });
+      }
+      
+      accountsMap.get(id)![field] = import.meta.env[key];
+    }
+  });
+
   const accounts: SupabaseAccount[] = [];
   
-  // Check for accounts 1 through 20 (you can add more if needed)
-  for (let i = 1; i <= 20; i++) {
-    const name = import.meta.env[`VITE_SUPABASE_${i}_NAME`];
-    const url = import.meta.env[`VITE_SUPABASE_${i}_URL`];
-    const key = import.meta.env[`VITE_SUPABASE_${i}_KEY`];
-    
-    // Only add if URL and KEY are provided (not empty)
-    if (url && key && url.trim() && key.trim()) {
+  for (const [id, account] of accountsMap.entries()) {
+    if (account.url && account.key && account.url.trim() && account.key.trim()) {
       accounts.push({
-        id: i,
-        name: name || `Account ${i}`,
-        url: url.trim(),
-        key: key.trim(),
+        id,
+        name: account.name || `Account ${id}`,
+        url: account.url.trim(),
+        key: account.key.trim(),
       });
     }
   }
   
-  return accounts;
+  // Return sorted by ID to maintain logical order
+  return accounts.sort((a, b) => a.id - b.id);
 }
 
